@@ -1,7 +1,6 @@
 #include <math.h>
 #include <stdio.h>
 #include <time.h>
-#include <unistd.h>
 
 // Costante per il posizionamento del cursore all'inizio dello schermo
 #define MOVE_CURSOR_HOME "\x1b[H"
@@ -108,7 +107,7 @@ int main() {
 
     t += 0.005f;
 
-    // Ritardo utilizzando nanosleep per controllare la velocit‡ di aggiornamento
+    // Ritardo utilizzando nanosleep per controllare la velocit√† di aggiornamento
     struct timespec req = {0};
     req.tv_sec = 0;
     req.tv_nsec = 3000000L; // 3 millisecondi
