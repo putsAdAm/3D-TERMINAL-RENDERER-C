@@ -1,14 +1,23 @@
+/*
+ANIMATED HEART by putsAdAm: working on Windows machines and Unix systems
+*/
 #include <math.h>
 #include <stdio.h>
 #include <time.h>
+#include <stdbool.h>
 
-// Costante per il posizionamento del cursore all'inizio dello schermo
-#define MOVE_CURSOR_HOME "\x1b[H"
+#ifdef _WIN32
+#include <conio.h> // For kbhit() and getch() on Windows
+#else
+#include <unistd.h>
+#include <signal.h> // For signal handling on Unix-like systems
+#endif
 
-// Costante per la cancellazione dello schermo e nascondere il cursore
-#define CLEAR_SCREEN "\x1b[2J\x1b[?25l"
+// Constants for cursor positioning and screen clearing
+#define MOVE_CURSOR_HOME "\x1b[H" // Move cursor to the home position
+#define CLEAR_SCREEN "\x1b[2J\x1b[?25l" // Clear screen and hide cursor
 
-// Costanti per i codici di colore ANSI
+// ANSI color code constants for different colors
 #define ANSI_COLOR_RESET "\x1b[0m"
 #define ANSI_COLOR_BLACK "\x1b[30m"
 #define ANSI_COLOR_RED "\x1b[31m"
@@ -27,94 +36,185 @@
 #define ANSI_COLOR_BRIGHT_CYAN "\x1b[96m"
 #define ANSI_COLOR_BRIGHT_WHITE "\x1b[97m"
 
-// Costante per il numero di colori disponibili
+// Constant to calculate the number of colors available
 #define NUM_COLORS (sizeof(colors) / sizeof(colors[0]))
 
-// Costante per il pattern di caratteri del cuore
+// Pattern characters for drawing the heart
 #define THEME " .,-~:;=!*#$@@"
 
+// Constants for the heart function's x and y plane range, and radius parameters
+#define RANGE 0.5f // Range for x and y coordinates
+#define STANDARD_RANGE 0.5f // Standard range for normalizing the radius
+#define R_BASE 0.4f // Base radius
+#define R_FACTOR 0.07f // Factor to modify the radius
+
+// Timing constants for animation
+#define ANIMATION_TIME 0.02f // Time increment for animation
+#define UPDATE_TIME 3000000L // Sleep time in nanoseconds for controlling animation speed
+#define COLOR_TIME 0.03f //Time increment for color changes
+
+// Function prototypes
+void initialize_screen();
+const char* get_color(int t);
+void calculate_depths(float t, float zvalues[], float* maxz);
+void print_heart(float zvalues[], float maxz, const char* color);
+void update_time(float* t, float* ct);
+void sleep_for_animation();
+bool check_exit_condition();
+
+#ifndef _WIN32
+void handle_signal(int signal);
+#endif
+
+// Global variable to control the loop
+volatile bool running = true;
+
 int main() {
-  // Cancella schermo e nasconde il cursore
-  printf(CLEAR_SCREEN);
+#ifndef _WIN32
+    // Register signal handler for graceful exit on Unix-like systems
+    signal(SIGINT, handle_signal);
+#endif
 
-  // Definisci array di codici di colore per il ciclo
-  const char *colors[] = {
-    ANSI_COLOR_RED,
-    ANSI_COLOR_BRIGHT_RED,
-    ANSI_COLOR_YELLOW,
-    ANSI_COLOR_BRIGHT_YELLOW,
-    ANSI_COLOR_WHITE,
-    // ANSI_COLOR_GREEN,
-    // ANSI_COLOR_CYAN,
-    // ANSI_COLOR_BLUE,
-    ANSI_COLOR_MAGENTA,
-    ANSI_COLOR_BRIGHT_MAGENTA,
-    // ANSI_COLOR_BRIGHT_GREEN,
-    // ANSI_COLOR_BRIGHT_CYAN,
-    // ANSI_COLOR_BRIGHT_BLUE,
-    // ANSI_COLOR_BRIGHT_WHITE,
-    // ANSI_COLOR_BLACK,
-    // ANSI_COLOR_BRIGHT_BLACK
-  };
+    // Clear the screen and hide the cursor
+    initialize_screen();
 
-  int num_colors = NUM_COLORS;
+    // Initialize the animation time variable and the color change variable
+    float t = 0;
+    float ct = 0;
 
-  float t = 0;
-  while (1) {
-    float zb[100 * 40] = {0};
-    float maxz = 0, c = cos(t), s = sin(t);
-    for (float y = -0.5f; y <= 0.5f; y += 0.01f) {
-      // Amplifica l'effetto pulsante
-      float r = 0.4f + 0.1f * pow(0.5f + 0.5f * sin(t * 12 + y * 2), 8);
-      for (float x = -0.5f; x <= 0.5f; x += 0.01f) {
-        // Formula del cuore
-        float z = -x * x - pow(1.2f * y - fabs(x) * 2 / 3, 2) + r * r;
-        if (z < 0)
-          continue;
-        z = sqrt(z) / (2 - y);
-        for (float tz = -z; tz <= z; tz += z / 6) {
-          // Ruota
-          float nx = x * c - tz * s;
-          float nz = x * s + tz * c;
+    // Infinite loop to continuously update the heart animation
+    while (!check_exit_condition()) {
+        // Array to store depth values for each point on the screen
+        float zvalues[100 * 40] = {0}; // Initialize depth values to 0
+        float maxz = 0; // Variable to keep track of the maximum depth value
 
-          // Aggiungi prospettiva
-          float p = 1 + nz / 2;
-          int vx = lroundf((nx * p + 0.5f) * 80 + 10);
-          int vy = lroundf((-y * p + 0.5f) * 39 + 2);
-          int idx = vx + vy * 100;
-          if (zb[idx] <= nz) {
-            zb[idx] = nz;
-            if (maxz <= nz)
-              maxz = nz;
-          }
-        }
-      }
+        // Calculate the depth values for the heart shape
+        calculate_depths(t, zvalues, &maxz);
+
+        // Get the current color based on time t
+        const char* color = get_color(ct);
+
+        // Print the heart using the calculated depth values and the current color
+        print_heart(zvalues, maxz, color);
+
+        // Update the animation times
+        update_time(&t, &ct);
+
+        // Sleep to control the animation speed
+        sleep_for_animation();
     }
 
-    printf(MOVE_CURSOR_HOME); // Posiziona il cursore all'inizio dello schermo
-
-    int color_index = ((int)(t * 10)) % num_colors; // Ciclo attraverso i colori
-    const char *color = colors[color_index];
-
-    for (int i = 0; i < 100 * 40; i++) {
-      if (i % 100 == 0) {
-        putchar(10); // Stampa un carattere di nuova linea ogni 100 caratteri
-      } else {
-        // Imposta il colore variabile per il cuore e reimposta il colore dopo la stampa
-        printf("%s%c%s", color, THEME [lroundf(zb[i] / maxz * 13)], ANSI_COLOR_RESET);
-      }
-    }
-
-    t += 0.005f;
-
-    // Ritardo utilizzando nanosleep per controllare la velocità di aggiornamento
-    struct timespec req = {0};
-    req.tv_sec = 0;
-    req.tv_nsec = 3000000L; // 3 millisecondi
-    nanosleep(&req, NULL);
-  }
-
-  return 0;
+    return 0;
 }
 
+// Function to clear the screen and hide the cursor
+void initialize_screen() {
+    printf(CLEAR_SCREEN); // Send ANSI escape codes to clear the screen and hide the cursor
+}
 
+// Function to get the current color based on time t
+const char* get_color(int t) {
+    static const char* colors[] = {
+        ANSI_COLOR_RED,
+        ANSI_COLOR_BRIGHT_RED,
+        ANSI_COLOR_YELLOW,
+        ANSI_COLOR_BRIGHT_YELLOW,
+        ANSI_COLOR_WHITE,
+        ANSI_COLOR_MAGENTA,
+        ANSI_COLOR_BRIGHT_MAGENTA,
+        // Additional colors commented out
+        // ANSI_COLOR_GREEN,
+        // ANSI_COLOR_BRIGHT_GREEN,
+        // ANSI_COLOR_BLUE,
+        // ANSI_COLOR_BRIGHT_BLUE,
+        // ANSI_COLOR_CYAN,
+        // ANSI_COLOR_BRIGHT_CYAN,
+        // ANSI_COLOR_BLACK,
+        // ANSI_COLOR_BRIGHT_BLACK,
+        // ANSI_COLOR_WHITE,
+        // ANSI_COLOR_BRIGHT_WHITE,
+    };
+    int num_colors = NUM_COLORS; // Calculate the number of colors available
+    int color_index = ((int)(t)) % num_colors; // Determine the color index based on time t
+    return colors[color_index]; // Return the current color
+}
+
+// Function to calculate depth values for the heart shape
+void calculate_depths(float t, float zvalues[], float* maxz) {
+    float c = cos(t), s = sin(t); // Calculate cosine and sine of time t for rotation
+    for (float y = -RANGE; y <= RANGE; y += 0.01f) {
+        // Calculate the radius with a pulsating effect
+        float r = (R_BASE * RANGE) / STANDARD_RANGE + (R_FACTOR * RANGE) / STANDARD_RANGE * pow(0.5f + 0.5f * sin(t * 12 + y * 2), 8);
+        for (float x = -RANGE; x <= RANGE; x += 0.01f) {
+            // Heart shape formula to calculate depth z
+            float z = -x * x - pow(1.2f * y - fabs(x) * 2 / 3, 2) + r * r;
+            if (z < 0) continue; // Skip if z is negative
+            z = sqrt(z) / (2 - y); // Calculate depth z
+            for (float tz = -z; tz <= z; tz += z / 6) {
+                // Rotate the point around the z-axis using the calculated cosine and sine
+                float rotx = x * c - tz * s;
+                float roty = x * s + tz * c;
+                // Add perspective to the rotated coordinates
+                float p = 1 + roty / 2;
+                int screen_x = lroundf((rotx * p + RANGE) * 80 + 10); // Calculate x screen coordinate
+                int screen_y = lroundf((-y * p + RANGE) * 39 + 2); // Calculate y screen coordinate
+                int ind = screen_x + screen_y * 100; // Calculate index in zvalues array
+                if (zvalues[ind] <= roty) { // Update depth value if the new depth is greater
+                    zvalues[ind] = roty;
+                    if (*maxz <= roty) *maxz = roty; // Update maxz if necessary
+                }
+            }
+        }
+    }
+}
+
+// Function to print the heart shape
+void print_heart(float zvalues[], float maxz, const char* color) {
+    printf(MOVE_CURSOR_HOME); // Move cursor to the home position
+    for (int i = 0; i < 100 * 40; i++) {
+        if (i % 100 == 0) {
+            putchar(10); // Print newline every 100 characters
+        } else {
+            // Print heart character with color and reset color
+            printf("%s%c%s", color, THEME[lroundf(zvalues[i] / maxz * 13)], ANSI_COLOR_RESET);
+        }
+    }
+}
+
+// Function to update the animation time
+void update_time(float* t, float* ct) {
+    *t += ANIMATION_TIME; // Increment time by animation time step
+    *ct += COLOR_TIME; // Increment time by color change step
+}
+
+// Function to sleep for controlling the animation speed
+void sleep_for_animation() {
+    struct timespec req = {0};
+    req.tv_sec = 0; // Set sleep seconds to 0
+    req.tv_nsec = UPDATE_TIME; // Set sleep nanoseconds to UPDATE_TIME
+    nanosleep(&req, NULL); // Sleep for the specified duration
+}
+
+// Function to check if a key has been pressed for exiting the loop
+bool check_exit_condition() {
+#ifdef _WIN32
+    // On Windows, check if a key has been pressed
+    if (_kbhit()) {
+        _getch(); // Consume the key press
+        return true; // Return true to exit the loop
+    }
+    return false; // Return false to continue the loop
+#else
+    // On Unix-like systems, check the global running variable
+    return !running; // Return true if running is false to exit the loop
+#endif
+}
+
+#ifndef _WIN32
+// Signal handler to exit the loop on Unix-like systems
+void handle_signal(int signal) {
+    if (signal == SIGINT) {
+        running = false; // Set running to false to exit the loop
+    }
+}
+#endif
