@@ -53,6 +53,17 @@ ANIMATED HEART by putsAdAm: working on Windows machines and Unix systems
 #define UPDATE_TIME 3000000L // Sleep time in nanoseconds for controlling animation speed
 #define COLOR_TIME 0.03f //Time increment for color changes
 
+// Equation for the function
+#define FUNCTION_EQ sqrt(r * r - x * x - y * y)
+// Heart function: -x * x - pow(1.2f * y - fabs(x) * 2 / 3, 2) + r * r
+// Sphere function: sqrt(r * r - x * x - y * y)
+
+//Equation for the radius (expanding/pulsating effect)
+#define FUNCTION_RAD (R_BASE * RANGE)/STANDARD_RANGE + ((R_FACTOR * RANGE)/STANDARD_RANGE) * sin(t)
+// Pulsating effect: (R_BASE * RANGE) / STANDARD_RANGE + (R_FACTOR * RANGE) / STANDARD_RANGE * pow(0.5f + 0.5f * sin(t * 12 + y * 2), 8)
+// No effect: (R_BASE * RANGE)/STANDARD_RANGE
+// Normal expanding effect: (R_BASE * RANGE)/STANDARD_RANGE + ((R_FACTOR * RANGE)/STANDARD_RANGE) * sin(t)
+
 // Function prototypes
 void initialize_screen();
 const char* get_color(int t);
@@ -144,10 +155,10 @@ void calculate_depths(float t, float zvalues[], float* maxz) {
     float c = cos(t), s = sin(t); // Calculate cosine and sine of time t for rotation
     for (float y = -RANGE; y <= RANGE; y += 0.01f) {
         // Calculate the radius with a pulsating effect
-        float r = (R_BASE * RANGE) / STANDARD_RANGE + (R_FACTOR * RANGE) / STANDARD_RANGE * pow(0.5f + 0.5f * sin(t * 12 + y * 2), 8);
+        float r = FUNCTION_RAD;
         for (float x = -RANGE; x <= RANGE; x += 0.01f) {
             // Heart shape formula to calculate depth z
-            float z = -x * x - pow(1.2f * y - fabs(x) * 2 / 3, 2) + r * r;
+            float z = FUNCTION_EQ;
             if (z < 0) continue; // Skip if z is negative
             z = sqrt(z) / (2 - y); // Calculate depth z
             for (float tz = -z; tz <= z; tz += z / 6) {
