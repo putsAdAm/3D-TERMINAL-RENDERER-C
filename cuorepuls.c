@@ -54,9 +54,11 @@ ANIMATED HEART by putsAdAm: working on Windows machines and Unix systems
 #define COLOR_TIME 0.03f //Time increment for color changes
 
 // Equation for the function
+// #define MUL 0.5f //decomment if you need the MUL constant
 #define FUNCTION_EQ sqrt(r * r - x * x - y * y)
 // Heart function: -x * x - pow(1.2f * y - fabs(x) * 2 / 3, 2) + r * r
 // Sphere function: sqrt(r * r - x * x - y * y)
+// Toroid function: sqrt(pow(0.5f*MUL*r, 2) - pow(MUL*r - sqrt(x*x + y*y), 2))
 
 //Equation for the radius (expanding/pulsating effect)
 #define FUNCTION_RAD (R_BASE * RANGE)/STANDARD_RANGE + ((R_FACTOR * RANGE)/STANDARD_RANGE) * sin(t)
