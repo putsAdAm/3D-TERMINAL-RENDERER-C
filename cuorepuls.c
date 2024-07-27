@@ -53,18 +53,26 @@ ANIMATED HEART by putsAdAm: working on Windows machines and Unix systems
 #define UPDATE_TIME 3000000L // Sleep time in nanoseconds for controlling animation speed
 #define COLOR_TIME 0.03f //Time increment for color changes
 
-// Equation for the function
-// #define MUL 0.5f //decomment if you need the MUL constant
-#define FUNCTION_EQ sqrt(r * r - x * x - y * y)
-// Heart function: -x * x - pow(1.2f * y - fabs(x) * 2 / 3, 2) + r * r
-// Sphere function: sqrt(r * r - x * x - y * y)
-// Toroid function: sqrt(pow(0.5f*MUL*r, 2) - pow(MUL*r - sqrt(x*x + y*y), 2))
+// Functions and parameters
+#define MUL 0.5f //decomment if you need the MUL constant for the toroid
+#define AX 0.75f //decomment if you need the "a" value in the ellipse funcion
+#define BX 0.25f //decomment if you need the "b" value in the ellipse funcion
+#define CX 0.25f //decomment if you need the "c" value in the ellipse funcion
+#define HEART_FUN -x * x - pow(1.2f * y - fabs(x) * 2 / 3, 2) + r * r
+#define SPHERE_FUN sqrt(r * r - x * x - y * y)
+#define TOROID_FUN sqrt(pow(0.5f*MUL*r, 2) - pow(MUL*r - sqrt(x*x + y*y), 2))
+#define ELLIPSE_FUN CX*sqrt(r - (x*x)/(AX*AX) - (y*y)/(BX*BX))
 
-//Equation for the radius (expanding/pulsating effect)
-#define FUNCTION_RAD (R_BASE * RANGE)/STANDARD_RANGE + ((R_FACTOR * RANGE)/STANDARD_RANGE) * sin(t)
-// Pulsating effect: (R_BASE * RANGE) / STANDARD_RANGE + (R_FACTOR * RANGE) / STANDARD_RANGE * pow(0.5f + 0.5f * sin(t * 12 + y * 2), 8)
-// No effect: (R_BASE * RANGE)/STANDARD_RANGE
-// Normal expanding effect: (R_BASE * RANGE)/STANDARD_RANGE + ((R_FACTOR * RANGE)/STANDARD_RANGE) * sin(t)
+//Chosen function
+#define CURRENT_FUN ELLIPSE_FUN
+
+// Three different radius effects
+#define EXP_RAD (R_BASE * RANGE)/STANDARD_RANGE + ((R_FACTOR * RANGE)/STANDARD_RANGE) * sin(t)
+#define FIX_RAD (R_BASE * RANGE)/STANDARD_RANGE
+#define PULS_RAD ((R_BASE * RANGE) / STANDARD_RANGE + (R_FACTOR * RANGE) / STANDARD_RANGE * pow(0.5f + 0.5f * sin(t * 12 + (y) * 2), 8))
+
+// Select the radius effect
+#define CURRENT_RAD FIX_RAD
 
 // Function prototypes
 void initialize_screen();
@@ -157,12 +165,12 @@ void calculate_depths(float t, float zvalues[], float* maxz) {
     float c = cos(t), s = sin(t); // Calculate cosine and sine of time t for rotation
     for (float y = -RANGE; y <= RANGE; y += 0.01f) {
         // Calculate the radius with a pulsating effect
-        float r = FUNCTION_RAD;
+        float r = CURRENT_RAD;
         for (float x = -RANGE; x <= RANGE; x += 0.01f) {
             // Heart shape formula to calculate depth z
-            float z = FUNCTION_EQ;
-            if (z < 0) continue; // Skip if z is negative
-            z = sqrt(z) / (2 - y); // Calculate depth z
+            float z = CURRENT_FUN;
+            if (z < 0) continue; // Skip if z is negative// Calculate depth z
+            // z = sqrt(z)/(2-y) //Add more volume to the heart function, not recommended for others
             for (float tz = -z; tz <= z; tz += z / 6) {
                 // Rotate the point around the z-axis using the calculated cosine and sine
                 float rotx = x * c - tz * s;
