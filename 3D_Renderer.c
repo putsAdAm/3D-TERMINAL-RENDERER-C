@@ -7,10 +7,10 @@ ANIMATED HEART by putsAdAm: working on Windows machines and Unix systems
 #include <stdbool.h>
 
 #ifdef _WIN32
-#include <conio.h> // For kbhit() and getch() on Windows
+#include <conio.h>
 #else
 #include <unistd.h>
-#include <signal.h> // For signal handling on Unix-like systems
+#include <signal.h>
 #endif
 
 // Constants for cursor positioning and screen clearing
@@ -36,17 +36,18 @@ ANIMATED HEART by putsAdAm: working on Windows machines and Unix systems
 #define ANSI_COLOR_BRIGHT_CYAN "\x1b[96m"
 #define ANSI_COLOR_BRIGHT_WHITE "\x1b[97m"
 
-// Constant to calculate the number of colors available
+// Constant to calculate the number of colors selected
 #define NUM_COLORS (sizeof(colors) / sizeof(colors[0]))
 
-// Pattern characters for drawing the heart
-#define THEME " .,-~:;=!*#$@@"
+// Pattern characters for drawing the function
+#define THEME " .,-~:;!=*$#8@"
 
-// Constants for the heart function's x and y plane range, and radius parameters
+// Constants for the plane range, the radius and the screen definition
 #define RANGE 0.5f // Range for x and y coordinates
 #define STANDARD_RANGE 0.5f // Standard range for normalizing the radius
 #define R_BASE 0.4f // Base radius
 #define R_FACTOR 0.07f // Factor to modify the radius
+#define DEFINITION 0.01f //Screen definition (0.01f recommended)
 
 // Timing constants for animation
 #define ANIMATION_TIME 0.02f // Time increment for animation
@@ -54,31 +55,32 @@ ANIMATED HEART by putsAdAm: working on Windows machines and Unix systems
 #define COLOR_TIME 0.03f //Time increment for color changes
 
 // Functions and parameters
-#define MUL 0.5f //decomment if you need the MUL constant for the toroid
+#define MUL 0.6f //decomment if you need the MUL constant for the toroid or the cube
 #define AX 0.75f //decomment if you need the "a" value in the ellipse funcion
 #define BX 0.25f //decomment if you need the "b" value in the ellipse funcion
 #define CX 0.25f //decomment if you need the "c" value in the ellipse funcion
-#define HEART_FUN -x * x - pow(1.2f * y - fabs(x) * 2 / 3, 2) + r * r
-#define SPHERE_FUN sqrt(r * r - x * x - y * y)
-#define TOROID_FUN sqrt(pow(0.5f*MUL*r, 2) - pow(MUL*r - sqrt(x*x + y*y), 2))
-#define ELLIPSE_FUN CX*sqrt(r - (x*x)/(AX*AX) - (y*y)/(BX*BX))
+#define HEART_FUN -x*x - pow(1.2f*y - fabs(x)*2/3, 2) + r*r //Equation of the heart function
+#define SPHERE_FUN sqrt(r*r - x*x - y*y) //Equation of the sphere function
+#define TOROID_FUN sqrt(pow(0.5f*MUL*r, 2) - pow(MUL*r - sqrt(x*x + y*y), 2)) //Equation of the toroid function
+#define ELLIPSE_FUN CX*sqrt(r - (x*x)/(AX*AX) - (y*y)/(BX*BX)) //Equation of the ellipse function
+#define CUBE_FUN ((fabs(x) <= (MUL*r) && fabs(y) <= (MUL*r)) ? (MUL*r) : -1) //Equation of the cube function
 
 //Chosen function
-#define CURRENT_FUN ELLIPSE_FUN
+#define CURRENT_FUN TOROID_FUN
 
 // Three different radius effects
 #define EXP_RAD (R_BASE * RANGE)/STANDARD_RANGE + ((R_FACTOR * RANGE)/STANDARD_RANGE) * sin(t)
 #define FIX_RAD (R_BASE * RANGE)/STANDARD_RANGE
 #define PULS_RAD ((R_BASE * RANGE) / STANDARD_RANGE + (R_FACTOR * RANGE) / STANDARD_RANGE * pow(0.5f + 0.5f * sin(t * 12 + (y) * 2), 8))
 
-// Select the radius effect
+// Chosen radius effect
 #define CURRENT_RAD FIX_RAD
 
 // Function prototypes
 void initialize_screen();
 const char* get_color(int t);
 void calculate_depths(float t, float zvalues[], float* maxz);
-void print_heart(float zvalues[], float maxz, const char* color);
+void print_fun(float zvalues[], float maxz, const char* color);
 void update_time(float* t, float* ct);
 void sleep_for_animation();
 bool check_exit_condition();
@@ -92,7 +94,7 @@ volatile bool running = true;
 
 int main() {
 #ifndef _WIN32
-    // Register signal handler for graceful exit on Unix-like systems
+    // Register signal handler for a controlled exit on Unix-based systems
     signal(SIGINT, handle_signal);
 #endif
 
@@ -103,20 +105,20 @@ int main() {
     float t = 0;
     float ct = 0;
 
-    // Infinite loop to continuously update the heart animation
+    // Infinite loop to continuously update the animation
     while (!check_exit_condition()) {
         // Array to store depth values for each point on the screen
         float zvalues[100 * 40] = {0}; // Initialize depth values to 0
         float maxz = 0; // Variable to keep track of the maximum depth value
 
-        // Calculate the depth values for the heart shape
+        // Calculate the depth values of the function
         calculate_depths(t, zvalues, &maxz);
 
         // Get the current color based on time t
         const char* color = get_color(ct);
 
-        // Print the heart using the calculated depth values and the current color
-        print_heart(zvalues, maxz, color);
+        // Print the function using the calculated depth values and the current color
+        print_fun(zvalues, maxz, color);
 
         // Update the animation times
         update_time(&t, &ct);
@@ -163,14 +165,13 @@ const char* get_color(int t) {
 // Function to calculate depth values for the heart shape
 void calculate_depths(float t, float zvalues[], float* maxz) {
     float c = cos(t), s = sin(t); // Calculate cosine and sine of time t for rotation
-    for (float y = -RANGE; y <= RANGE; y += 0.01f) {
-        // Calculate the radius with a pulsating effect
+    for (float y = -RANGE; y <= RANGE; y += DEFINITION) {
+        // Calculate the radius according to the chosen effect
         float r = CURRENT_RAD;
-        for (float x = -RANGE; x <= RANGE; x += 0.01f) {
-            // Heart shape formula to calculate depth z
+        for (float x = -RANGE; x <= RANGE; x += DEFINITION) {
+            // Calculate the z value according to the chosen function
             float z = CURRENT_FUN;
-            if (z < 0) continue; // Skip if z is negative// Calculate depth z
-            // z = sqrt(z)/(2-y) //Add more volume to the heart function, not recommended for others
+            if (z < 0) continue; // Skip if z is negative 
             for (float tz = -z; tz <= z; tz += z / 6) {
                 // Rotate the point around the z-axis using the calculated cosine and sine
                 float rotx = x * c - tz * s;
@@ -189,8 +190,8 @@ void calculate_depths(float t, float zvalues[], float* maxz) {
     }
 }
 
-// Function to print the heart shape
-void print_heart(float zvalues[], float maxz, const char* color) {
+// Function to print the function
+void print_fun(float zvalues[], float maxz, const char* color) {
     printf(MOVE_CURSOR_HOME); // Move cursor to the home position
     for (int i = 0; i < 100 * 40; i++) {
         if (i % 100 == 0) {
@@ -226,13 +227,13 @@ bool check_exit_condition() {
     }
     return false; // Return false to continue the loop
 #else
-    // On Unix-like systems, check the global running variable
+    // On Unix-based systems, check the global running variable
     return !running; // Return true if running is false to exit the loop
 #endif
 }
 
 #ifndef _WIN32
-// Signal handler to exit the loop on Unix-like systems
+// Signal handler to exit the loop on Unix-based systems
 void handle_signal(int signal) {
     if (signal == SIGINT) {
         running = false; // Set running to false to exit the loop
