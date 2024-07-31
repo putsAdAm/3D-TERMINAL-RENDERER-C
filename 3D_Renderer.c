@@ -162,7 +162,7 @@ const char* get_color(int t) {
     return colors[color_index]; // Return the current color
 }
 
-// Function to calculate depth values for the heart shape
+// Function to calculate depth values for the function
 void calculate_depths(float t, float zvalues[], float* maxz) {
     float c = cos(t), s = sin(t); // Calculate cosine and sine of time t for rotation
     for (float y = -RANGE; y <= RANGE; y += DEFINITION) {
