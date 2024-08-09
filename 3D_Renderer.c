@@ -59,22 +59,22 @@ ANIMATED HEART by putsAdAm: working on Windows machines and Unix systems
 #define AX 0.75f //decomment if you need the "a" value in the ellipse funcion
 #define BX 0.25f //decomment if you need the "b" value in the ellipse funcion
 #define CX 0.25f //decomment if you need the "c" value in the ellipse funcion
-#define HEART_FUN -x*x - pow(1.2f*y - fabs(x)*2/3, 2) + r*r //Equation of the heart function
-#define SPHERE_FUN sqrt(r*r - x*x - y*y) //Equation of the sphere function
-#define TOROID_FUN sqrt(pow(0.5f*MUL*r, 2) - pow(MUL*r - sqrt(x*x + y*y), 2)) //Equation of the toroid function
-#define ELLIPSE_FUN CX*sqrt(r - (x*x)/(AX*AX) - (y*y)/(BX*BX)) //Equation of the ellipse function
-#define CUBE_FUN ((fabs(x) <= (MUL*r) && fabs(y) <= (MUL*r)) ? (MUL*r) : -1) //Equation of the cube function
+#define HEART_FUN(x, y, r) -x*x - pow(1.2f*y - fabs(x)*2/3, 2) + r*r //Equation of the heart function
+#define SPHERE_FUN(x, y, r) sqrt(r*r - x*x - y*y) //Equation of the sphere function
+#define TOROID_FUN(x, y, r) sqrt(pow(0.5f*MUL*r, 2) - pow(MUL*r - sqrt(x*x + y*y), 2)) //Equation of the toroid function
+#define ELLIPSE_FUN(x, y, r) CX*sqrt(r - (x*x)/(AX*AX) - (y*y)/(BX*BX)) //Equation of the ellipse function
+#define CUBE_FUN(x, y, r) ((fabs(x) <= (MUL*r) && fabs(y) <= (MUL*r)) ? (MUL*r) : -1) //Equation of the cube function
 
 //Chosen function
-#define CURRENT_FUN TOROID_FUN
+#define CURRENT_FUN(x, y, r) TOROID_FUN(x, y, r)
 
 // Three different radius effects
-#define EXP_RAD (R_BASE * RANGE)/STANDARD_RANGE + ((R_FACTOR * RANGE)/STANDARD_RANGE) * sin(t)
-#define FIX_RAD (R_BASE * RANGE)/STANDARD_RANGE
-#define PULS_RAD ((R_BASE * RANGE) / STANDARD_RANGE + (R_FACTOR * RANGE) / STANDARD_RANGE * pow(0.5f + 0.5f * sin(t * 12 + (y) * 2), 8))
+#define EXP_RAD(y, t) (R_BASE * RANGE)/STANDARD_RANGE + ((R_FACTOR * RANGE)/STANDARD_RANGE) * sin(t)
+#define FIX_RAD(y, t) (R_BASE * RANGE)/STANDARD_RANGE
+#define PULS_RAD(y, t) ((R_BASE * RANGE) / STANDARD_RANGE + (R_FACTOR * RANGE) / STANDARD_RANGE * pow(0.5f + 0.5f * sin(t * 12 + (y) * 2), 8))
 
 // Chosen radius effect
-#define CURRENT_RAD FIX_RAD
+#define CURRENT_RAD(y, t) FIX_RAD(y, t)
 
 // Function prototypes
 void initialize_screen();
@@ -167,10 +167,10 @@ void calculate_depths(float t, float zvalues[], float* maxz) {
     float c = cos(t), s = sin(t); // Calculate cosine and sine of time t for rotation
     for (float y = -RANGE; y <= RANGE; y += DEFINITION) {
         // Calculate the radius according to the chosen effect
-        float r = CURRENT_RAD;
+        float r = CURRENT_RAD(y, t);
         for (float x = -RANGE; x <= RANGE; x += DEFINITION) {
             // Calculate the z value according to the chosen function
-            float z = CURRENT_FUN;
+            float z = CURRENT_FUN(x, y, r);
             if (z < 0) continue; // Skip if z is negative 
             for (float tz = -z; tz <= z; tz += z / 6) {
                 // Rotate the point around the z-axis using the calculated cosine and sine
