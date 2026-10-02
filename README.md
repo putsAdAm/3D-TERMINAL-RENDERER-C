@@ -20,3 +20,5 @@ _Heart function with the pulsating effect_
 
 _Toroid function with the expanding effect_
 
+## Some observations after 2 years
+This code is quite bad, the fact that you can modify it only by acting on the macros is enough to say that. However, the result is pretty cool and therefore I'm keeping it.
